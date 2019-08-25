@@ -124,4 +124,59 @@ public class AuthenticationApiResource {
 
         return this.apiJsonSerializerService.serialize(authenticatedUserData);
     }
+    
+    
+    @POST
+    @Produces({ MediaType.APPLICATION_JSON })
+    @ApiOperation(value = "Verify authentication", notes = "Authenticates the credentials provided and returns the set roles and permissions allowed.")
+    @ApiResponses({@ApiResponse(code = 200, message = "", response = AuthenticationApiResourceSwagger.PostAuthenticationResponse.class), @ApiResponse(code = 400, message = "Unauthenticated. Please login")})
+    public String authenticate(@QueryParam("username") @ApiParam(value = "username") final String username, @QueryParam("password") @ApiParam(value = "password") final String password,@QueryParam("token") @ApiParam(value = "token") final String token,@QueryParam("isSelfieAuthenticated") @ApiParam(value = "isSelfieAuthenticated") final Boolean isSelfieAuthenticated) {
+
+        final Authentication authentication = new UsernamePasswordAuthenticationToken(username, password);
+        final Authentication authenticationCheck = this.customAuthenticationProvider.authenticate(authentication);
+
+        final Collection<String> permissions = new ArrayList<>();
+        AuthenticatedUserData authenticatedUserData = new AuthenticatedUserData(username, permissions);
+
+        if (isSelfieAuthenticated) {
+            final Collection<GrantedAuthority> authorities = new ArrayList<>(authenticationCheck.getAuthorities());
+            for (final GrantedAuthority grantedAuthority : authorities) {
+                permissions.add(grantedAuthority.getAuthority());
+            }
+
+            final byte[] base64EncodedAuthenticationKey = Base64.encode(username + ":" + password);
+
+            final AppUser principal = (AppUser) authenticationCheck.getPrincipal();
+            final Collection<RoleData> roles = new ArrayList<>();
+            final Set<Role> userRoles = principal.getRoles();
+            for (final Role role : userRoles) {
+                roles.add(role.toData());
+            }
+
+            final Long officeId = principal.getOffice().getId();
+            final String officeName = principal.getOffice().getName();
+
+            final Long staffId = principal.getStaffId();
+            final String staffDisplayName = principal.getStaffDisplayName();
+
+            final EnumOptionData organisationalRole = principal.organisationalRoleData();
+
+            boolean isTwoFactorRequired = twoFactorUtils.isTwoFactorAuthEnabled() && !
+                    principal.hasSpecificPermissionTo(TwoFactorConstants.BYPASS_TWO_FACTOR_PERMISSION);
+            if (this.springSecurityPlatformSecurityContext.doesPasswordHasToBeRenewed(principal)) {
+                authenticatedUserData = new AuthenticatedUserData(username, principal.getId(),
+                        new String(base64EncodedAuthenticationKey), isTwoFactorRequired);
+            } else {
+
+                authenticatedUserData = new AuthenticatedUserData(username, officeId, officeName, staffId, staffDisplayName,
+                        organisationalRole, roles, permissions, principal.getId(),
+                        new String(base64EncodedAuthenticationKey), isTwoFactorRequired);
+            }
+
+        }
+
+        return this.apiJsonSerializerService.serialize(authenticatedUserData);
+    }
+    
+    
 }

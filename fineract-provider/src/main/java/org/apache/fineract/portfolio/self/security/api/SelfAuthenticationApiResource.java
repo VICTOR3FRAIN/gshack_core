@@ -54,5 +54,14 @@ public class SelfAuthenticationApiResource {
 			@QueryParam("password") @ApiParam(value = "password") final String password) {
 		return this.authenticationApiResource.authenticate(username, password);
 	}
+        
+        @POST
+	@Produces({ MediaType.APPLICATION_JSON })
+	@ApiOperation(value = "Verify authentication", httpMethod = "POST", notes = "Authenticates the credentials provided and returns the set roles and permissions allowed.\n\n" + "Please visit this link for more info - https://demo.openmf.org/api-docs/apiLive.htm#selfbasicauth")
+	@ApiResponses({@ApiResponse(code = 200, message = "OK", response = SelfAuthenticationApiResourceSwagger.PostSelfAuthenticationResponse.class)})
+	public String authenticate(@QueryParam("username") @ApiParam(value = "username") final String username,
+			@QueryParam("password") @ApiParam(value = "password") final String password,@QueryParam("token") @ApiParam(value = "token") final String token,@QueryParam("isSelfieAuthenticated") @ApiParam(value = "isSelfieAuthenticated") final Boolean isSelfieAuthenticated) {
+		return this.authenticationApiResource.authenticate(username, password,token,isSelfieAuthenticated);
+	}
 
 }
